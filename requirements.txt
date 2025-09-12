@@ -1,0 +1,4 @@
+pyusb
+evdev
+obs-websocket-py
+pillow
