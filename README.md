@@ -2,7 +2,7 @@
 
 This repository provides a Python driver for the Mountain DisplayPad, enabling users to control and customize their DisplayPad devices on various operating systems.
 
-This was built on the amazing work of [ReversingForFun in their DisplayPad project](https://github.com/ReversingForFun/MountainDisplayPadPy/tree/main).
+This was built on the amazing work of [ReversingForFun in their DisplayPad project](https://github.com/ReversingForFun/MountainDisplayPadPy/tree/main). Specifically how keys are decoded was learned from [LeLuF's mountain-displaypad](https://github.com/JeLuF/mountain-displaypad/tree/main).
 
 ## Features
 
