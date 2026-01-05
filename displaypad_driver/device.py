@@ -5,7 +5,7 @@ import logging
 import time
 
 from .transport import USBTransport
-from .protocol import URB_HEADERS, KEYMAP, parse_response
+from .protocol import URB_HEADERS, KEYMAP, parse_response, get_pressed_keys
 from .image import load_image_bytes
 from .exceptions import DisplayPadError
 from time import sleep
@@ -24,6 +24,7 @@ class DisplayPad:
     def __init__(self, vendor_id: int, product_id: int):
         self.transport = USBTransport(vendor_id, product_id)
         self.enabled = False
+        self.pressed_keys = set()  # Track currently pressed keys
         
         self.reset()
         self.enable(True)
@@ -38,23 +39,44 @@ class DisplayPad:
         self.reset()
         self.enable(False)
 
-    def poll_key(self) -> Optional[int]:
-        """Poll for a key press and return the key index or None."""
+    def poll_key(self) -> dict:
+        """Poll for key events and return pressed and released keys.
+        
+        Returns:
+            A dictionary with 'pressed' and 'released' keys:
+            {
+                'pressed': [list of newly pressed key indices],
+                'released': [list of newly released key indices],
+                'current': [list of all currently pressed key indices]
+            }
+        """
         try:
             msg = self.transport.read_interrupt()
         except Exception as e:
             log.debug('poll_key read failed: %s', e)
-            return None
+            return {'pressed': [], 'released': [], 'current': list(self.pressed_keys)}
 
         if not isinstance(msg, (bytes, bytearray)):
-            return None
+            return {'pressed': [], 'released': [], 'current': list(self.pressed_keys)}
 
-        if msg and msg[0] == 0x01:
-            parsed = parse_response(msg)
-            if parsed in KEYMAP:
-                return KEYMAP.index(parsed)
+        if not msg or msg[0] != 0x01:
+            return {'pressed': [], 'released': [], 'current': list(self.pressed_keys)}
 
-        return None
+        # Get current pressed keys from message
+        current_pressed = set(get_pressed_keys(msg))
+        
+        # Calculate newly pressed and released keys
+        newly_pressed = list(current_pressed - self.pressed_keys)
+        newly_released = list(self.pressed_keys - current_pressed)
+        
+        # Update state
+        self.pressed_keys = current_pressed
+        
+        return {
+            'pressed': sorted(newly_pressed),
+            'released': sorted(newly_released),
+            'current': sorted(current_pressed)
+        }
 
     def enable(self, enabled: bool = True) -> bool:
         header = URB_HEADERS.get('APEnable')

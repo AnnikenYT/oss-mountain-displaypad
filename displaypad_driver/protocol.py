@@ -37,6 +37,32 @@ def parse_response(msg: bytes) -> bytes:
     return binascii.hexlify(msg)
 
 
+def get_pressed_keys(msg: bytes) -> list:
+    """Extract the list of currently pressed keys from the message.
+    
+    Byte 42 (index 42) contains state of keys 1-7 (bits 1-7)
+    Byte 47 (index 47) contains state of keys 8-12 (bits 0-4)
+    """
+    pressed_keys = []
+    
+    if len(msg) < 48:
+        return pressed_keys
+    
+    # Check byte 42 for keys 1-7 (bits 1-7)
+    byte_42 = msg[42]
+    for bit in range(1, 8):
+        if byte_42 & (1 << bit):
+            pressed_keys.append(bit - 1)  # Convert to 0-indexed
+    
+    # Check byte 47 for keys 8-12 (bits 0-4)
+    byte_47 = msg[47]
+    for bit in range(0, 5):
+        if byte_47 & (1 << bit):
+            pressed_keys.append(7 + bit)  # Keys 8-12 map to indices 7-11
+    
+    return pressed_keys
+
+
 def pack_message(message: bytes, buff_size: int = 64) -> bytes:
     """Pack a message into a fixed-size buffer for interrupt transfers."""
     rem_buff = int(buff_size - len(message))
