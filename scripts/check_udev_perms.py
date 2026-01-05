@@ -22,9 +22,16 @@ def check_udev_permissions(vendor_id: int, product_id: int) -> bool:
         if e.errno == 13:  # Permission denied
             print(f"Permission denied for device {hex(vendor_id)}:{hex(product_id)}.")
             # Print udev rules suggestion
-            udev_rule = f'SUBSYSTEM=="usb", ATTR{{idVendor}}=="{vendor_id:04x}", ATTR{{idProduct}}=="{product_id:04x}", MODE="0666"'
+            udev_rule = f'SUBSYSTEM=="usb", ATTR{{idVendor}}=="{vendor_id:04x}", ATTR{{idProduct}}=="{product_id:04x}", MODE="0660", GROUP="plugdev"'
             print("You may need to create a udev rule like the following:")
             print(udev_rule)
+            print("=" * 10 + " COPY AND PASTE COMMANDS AT YOUR OWN RISK " + "=" * 10)
+            # add group
+            print("sudo usermod -aG plugdev $USER")
+            print("echo '{}' | sudo tee /etc/udev/rules.d/99-displaypad.rules".format(udev_rule))
+            print("sudo udevadm control --reload-rules && sudo udevadm trigger")
+            print("=" * 66)
+            print("After adding the udev rule, please log out and log back in for the changes to take effect. You may also need to reboot.")
             return False
         else:
             print(f"USB error occurred: {e}")
