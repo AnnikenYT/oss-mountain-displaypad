@@ -55,7 +55,7 @@ class USBTransport:
     def write_interrupt(self, endpoint: int = 0x4, data: bytes = b'', length: int = 64, timeout: int = 2000) -> bytes:
         """Write data broken into 'length' chunks, then read response."""
         remainder = bytes(data)
-        log.debug(f"Writing to endpoint {endpoint}: {data}")
+        # log.debug(f"Writing to endpoint {endpoint}: {data}")
         try:
             while len(remainder) != 0:
                 buffer = remainder[:length]

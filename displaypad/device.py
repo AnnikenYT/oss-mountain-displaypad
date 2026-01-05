@@ -2,11 +2,13 @@
 from typing import Optional
 import struct
 import logging
+import time
 
 from .transport import USBTransport
 from .protocol import URB_HEADERS, KEYMAP, parse_response
 from .image import load_image_bytes
 from .exceptions import DisplayPadError
+from time import sleep
 
 log = logging.getLogger(__name__)
 
@@ -22,11 +24,19 @@ class DisplayPad:
     def __init__(self, vendor_id: int, product_id: int):
         self.transport = USBTransport(vendor_id, product_id)
         self.enabled = False
-
-        try:
-            self.enable(True)
-        except DisplayPadError as e:
-            log.error('Failed to enable DisplayPad: %s', e)
+        
+        self.reset()
+        self.enable(True)
+        
+    def reset(self):
+        self.transport.device.reset()
+    
+    def __enter__(self):
+        return self
+        
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.reset()
+        self.enable(False)
 
     def poll_key(self) -> Optional[int]:
         """Poll for a key press and return the key index or None."""
@@ -50,23 +60,36 @@ class DisplayPad:
         header = URB_HEADERS.get('APEnable')
         enabled_byte = 0x1 if enabled else 0x0
         msg = bytearray(header) + bytearray([enabled_byte])
+
+        log.debug("Enabling device: %s", "ON" if enabled else "OFF")
+        log.debug("Message to send: %s", msg)
+
         try:
+            start_time = time.time()
             r = self.transport.write_interrupt(0x4, msg)
+            elapsed_time = time.time() - start_time
+            log.debug("Write operation completed in %.2f seconds", elapsed_time)
         except Exception as e:
+            log.error("Error during write_interrupt: %s", e)
+            if hasattr(e, 'errno'):
+                log.error("Error number: %s", e.errno)
+            if hasattr(e, 'strerror'):
+                log.error("Error description: %s", e.strerror)
             raise DisplayPadError(e)
 
         # parse response
         if isinstance(r, (bytes, bytearray)):
+            log.debug("Response received: %s", r)
             if r.startswith(bytes(header)):
-                # expected success byte is at header length + 1 in original implementation
                 if len(r) > len(header) + 1 and r[len(header) + 1] == 0x01:
-                    self.enabled = True
+                    self.enabled = enabled
+                    log.debug("Device successfully enabled.")
                     return True
-                # sometimes device returns timeout tuple-equivalent -> treat as enabled
-            # fallback: treat as enabled if no error
-            self.enabled = True
+            self.enabled = enabled
+            log.debug("Fallback: Device treated as %s.", "enabled" if enabled else "disabled")
             return True
 
+        log.warning("Unexpected response or no response received.")
         return False
 
     def set_brightness(self, value: int = 100):
@@ -91,8 +114,8 @@ class DisplayPad:
 
         if imgpath:
             # calculate expected size and load/resize image accordingly
-            width = (right - left) + 1
-            height = (bottom - top) + 1
+            width = (right - left)
+            height = (bottom - top)
             imgdata = load_image_bytes(imgpath, size=(width, height))
 
         if not imgdata:
