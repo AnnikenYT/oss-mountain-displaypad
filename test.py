@@ -1,5 +1,5 @@
 import logging
-from displaypad import DisplayPad
+from displaypad_driver import DisplayPad
 import time
 
 # Set up logging

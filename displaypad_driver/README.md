@@ -18,7 +18,7 @@ from displaypad import DisplayPad
 # create instance (vendor_id, product_id)
 dp = DisplayPad(0x3282, 0x0009)
 
-# set brightness
+# set brightness (this seems to only work sporadically)
 dp.set_brightness(50)
 
 # poll for a key press
