@@ -17,6 +17,8 @@ class Canvas:
         self.width = width
         self.height = height
         self.pixels = [[(0, 0, 0) for _ in range(width)] for _ in range(height)]
+        # Track whether the in-memory canvas differs from what has been sent to the device
+        self.dirty = True
         
     def draw_icon(self, icon: Icon, position: tuple):
         """Draw an Icon onto the Canvas at the specified position (x, y)."""
@@ -24,6 +26,9 @@ class Canvas:
         icon_width, icon_height = Icon.size
 
         x_offset, y_offset = position
+
+        # Any draw operation means we need to push pixels to the device again
+        self.dirty = True
 
         for y in range(icon_height):
             row = icon_pixels[y]
