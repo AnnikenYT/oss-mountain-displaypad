@@ -16,12 +16,12 @@ class Icon:
     def __init__(self, image: PIL.Image.Image = None, image_path: str = None):
         if image_path:
             self.image = PIL.Image.open(image_path).convert('RGB')
-            self.source_image
+            self.source_image = self.image.copy()
         else:
             if image is None:
                 raise ValueError("Either image or image_path must be provided")
             self.image = image
-            self.source_image = image
+            self.source_image = image.copy()
             
         self.label = {
             'content': '',

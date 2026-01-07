@@ -1,86 +1,77 @@
-from .button import Button
-from .canvas import Canvas
-from displaypad_driver import DisplayPad as DPDriver
-import logging
-import time
-
-log = logging.getLogger(__name__)
+from PIL import Image, ImageDraw
+from .key import Key
+from .keycontext import KeyContext
+from displaypad_driver import DisplayPad as Driver
 
 class DisplayPad:
     def __init__(self):
-        self.dp = DPDriver(0x3282, 0x0009)
-        self.canvas = Canvas(self)
-        self.buttons = [Button(i, canvas=self.canvas) for i in range(12)]
-        self._last_key_events = {'pressed': [], 'released': [], 'current': []}
-        
-    def __enter__(self):
-        self.dp.__enter__()
-        return self
-    
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.dp.__exit__(exc_type, exc_value, traceback)
-        
-    def draw(self):
-        # Skip USB traffic when nothing changed to avoid backpressure on key polling
-        if not self.canvas.dirty:
-            return
+        self.driver = Driver()
+        self.keys = [None] * 12  # The 2x6 grid
+        self.width = 800
+        self.height = 240
+        self.image_buffer = Image.new("RGB", (self.width, self.height))
+        self.running = False
 
-        imgdata = []
-        for row in self.canvas.pixels:
-            for pixel in row:
-                imgdata.append(pixel)
+    def __setitem__(self, index, key_instance):
+        """Allows syntax: pad[0] = MyCustomKey()"""
+        if 0 <= index < 12:
+            self.keys[index] = key_instance
+            key_instance.on_mount(index)
+            key_instance.request_redraw()
+            
+    def disable(self):
+        self.driver.enable(False)
 
-        # Device can briefly reject image data while handling other USB traffic;
-        # retry a couple times with a short pause before surfacing the error.
-        last_error = None
-        for _ in range(3):
-            try:
-                self.dp.set_panel_image(imgdata=imgdata)
-                self.canvas.dirty = False
-                return
-            except Exception as e:
-                last_error = e
-                time.sleep(0.05)
+    def _get_key_coords(self, index):
+        # Calculate x, y, width, height for index 0-11
+        # 6 columns, 2 rows. 
+        # width approx 133px, height 120px
+        row = index // 6
+        col = index % 6
+        w = self.width // 6
+        h = self.height // 2
+        return (col * w, row * h)
 
-        raise last_error
-        
     def update(self):
-        key_events = self._poll_keys_with_retry()
-            
-        for key_id in key_events['pressed']:
-            self.buttons[key_id].trigger_down()
-            
-        for key_id in key_events['released']:
-            self.buttons[key_id].trigger_up()
-            
-        try:
-            self.draw()
-        except Exception as e:
-            log.warning('DisplayPad update draw failed: %s', e)
+        """The Main Loop"""
+        # 1. Poll Driver
+        input_state = self.driver.poll_key()
+        # input_state e.g., {'pressed': [0], 'released': [1], 'held': [0]}
 
-        # Fast taps can begin and end during a long draw; poll again afterward
-        post_draw_events = self._poll_keys_with_retry()
-        for key_id in post_draw_events['pressed']:
-            self.buttons[key_id].trigger_down()
-        for key_id in post_draw_events['released']:
-            self.buttons[key_id].trigger_up()
+        global_dirty = False
+
+        # 2. Dispatch Input Events
+        for idx in input_state['pressed']:
+            if self.keys[idx]: self.keys[idx].on_press()
         
-        return {
-            'pressed': key_events['pressed'] + post_draw_events['pressed'],
-            'released': key_events['released'] + post_draw_events['released'],
-            'current': post_draw_events.get('current', key_events.get('current', []))
-        }
+        for idx in input_state['released']:
+            if self.keys[idx]: self.keys[idx].on_release()
 
-    def _poll_keys_with_retry(self):
-        key_events = {'pressed': [], 'released': [], 'current': self._last_key_events.get('current', [])}
+        # 3. Render Pass
+        for i, key in enumerate(self.keys):
+            if key:
+                # Optional: Call on_tick for animations
+                key.on_tick()
+                
+                if key._needs_redraw:
+                    # Create a drawing context for this specific area
+                    x, y = self._get_key_coords(i)
+                    # Create a crop or strictly bounded draw interface
+                    # For simplicity, we can pass the global draw and offset
+                    draw = ImageDraw.Draw(self.image_buffer)
+                    
+                    # We pass a custom context that handles the offset automatically
+                    ctx = KeyContext(draw, x_offset=x, y_offset=y)
+                    key.render(ctx)
+                    
+                    key._needs_redraw = False
+                    global_dirty = True
 
-        for _ in range(3):
-            try:
-                key_events = self.dp.poll_key()
-                break
-            except Exception as e:
-                log.debug('DisplayPad poll_key retrying after: %s', e)
-                time.sleep(0.005)
-
-        self._last_key_events = key_events
-        return key_events
+        # 4. Push to Device
+        if global_dirty:
+            # set_panel_image: imgdata should be a sequence of (R,G,B) tuples in PIL order.
+            pixels = []
+            for y in range(self.height):
+                for x in range(self.width):
+                    pixels.append(self.image_buffer.getpixel((x, y)))
+            self.driver.set_panel_image(imgdata=pixels)

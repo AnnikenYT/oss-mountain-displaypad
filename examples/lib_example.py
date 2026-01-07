@@ -1,41 +1,58 @@
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from displaypad_lib import DisplayPad, Icon
+from displaypad_lib import DisplayPad, Key
 import logging
 import random
 
 logging.basicConfig(level=logging.INFO)
 
-def random_color():
-    return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
-with DisplayPad() as dp:
+class LoggerKey(Key):
+    def __init__(self, idx):
+        super().__init__()
+        self.idx = idx
+        
+    def on_press(self):
+        logging.info(f"Key {self.idx} Pressed!")
     
-    for button in dp.buttons:
-        
-        icon = Icon.fill_color((button.id * 20 % 256, button.id * 40 % 256, button.id * 60 % 256))
-        icon.set_label(f"Btn {button.id}", position=('center', 'center'))
-        button.set_icon(icon)
-        
-        def make_on_down(b):
-            def on_down(btn):
-                print(f"Button {b.id} pressed")
-                new_icon = Icon.fill_color(random_color())
-                new_icon.set_label(f"Btn {b.id}", position=('center', 'center'))
-                b.set_icon(new_icon)
-            return on_down
-        
-        button.on_down(make_on_down(button))
-        
-        button.on_up(lambda btn: print(f"Button {btn.id} released"))
-    
-    print("Starting DisplayPad interaction. Press Ctrl+C to exit.")
+    def on_release(self):
+        logging.info(f"Key {self.idx} Released!")
 
-    while True:
-        try:
-            dp.update()
-        except KeyboardInterrupt:
-            print("Exiting DisplayPad interaction.")
-            break
+    def render(self, ctx):
+        ctx.rectangle(0, 0, 133, 120, color="blue")
+        ctx.text(10, 50, f"LOG KEY {self.idx}", color="white")
+
+# The User defines a reusable component
+class MuteButton(LoggerKey):
+    def __init__(self, idx):
+        super().__init__(idx)
+        self.is_muted = False
+
+    def on_press(self):
+        self.is_muted = not self.is_muted
+        # Do the actual system mute here
+        self.request_redraw() # Request visual update
+        return super().on_press()
+
+    def render(self, ctx):
+        if self.is_muted:
+            ctx.rectangle(0, 0, 133, 120, color="red")
+            ctx.text(50, 50, "MUTED", color="white")
+        else:
+            ctx.rectangle(0, 0, 133, 120, color="green")
+            ctx.text(50, 50, "LIVE", color="white")
+
+# The User sets up the board
+pad = DisplayPad()
+
+
+for i in range(12):
+    pad[i] = MuteButton(i)
+
+while True:
+    try:
+        pad.update()
+    except KeyboardInterrupt:
+        break
+    except Exception as e:
+        logging.error(f"Error in main loop: {e}")
+
+pad.disable()
