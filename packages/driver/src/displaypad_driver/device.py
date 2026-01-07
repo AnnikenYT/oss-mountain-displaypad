@@ -146,7 +146,9 @@ class DisplayPad:
 
         if isinstance(r, (bytes, bytearray)) and bytes(header) in r:
             # --- THE CHUNK LOOP ---
-            chunk_size = 1024
+            # Windows bulk endpoints are happiest with <=512-byte payloads.
+            chunk_size = 512
+            bulk_timeout = 8000
             total_len = len(raw_data)
             
             # We will check for inputs every ~16KB (approx every 10-25ms)
@@ -157,7 +159,24 @@ class DisplayPad:
             for i in range(0, total_len - chunk_size, chunk_size):
                 # 1. Send the Chunk
                 chunk = raw_data[i : i + chunk_size]
-                self.transport.write_interrupt(Endpoint.BULK_OUT.value, chunk, length=chunk_size, read_response=False)
+                try:
+                    self.transport.write_interrupt(
+                        Endpoint.BULK_OUT.value,
+                        chunk,
+                        length=len(chunk),
+                        timeout=bulk_timeout,
+                        read_response=False,
+                    )
+                except Exception:
+                    # Clear a possible stall and retry once
+                    self.transport.clear_halt(Endpoint.BULK_OUT.value)
+                    self.transport.write_interrupt(
+                        Endpoint.BULK_OUT.value,
+                        chunk,
+                        length=len(chunk),
+                        timeout=bulk_timeout,
+                        read_response=False,
+                    )
                 
                 # If we are effectively "blocking" the main thread, we must check inputs here.
                 if i > next_check:
@@ -167,7 +186,23 @@ class DisplayPad:
             # Send any remaining bytes
             remainder = raw_data[(total_len // chunk_size) * chunk_size :]
             if remainder:
-                resp = self.transport.write_interrupt(Endpoint.BULK_OUT.value, remainder, length=len(remainder), read_response=True)
+                try:
+                    resp = self.transport.write_interrupt(
+                        Endpoint.BULK_OUT.value,
+                        remainder,
+                        length=len(remainder),
+                        timeout=bulk_timeout,
+                        read_response=True,
+                    )
+                except Exception:
+                    self.transport.clear_halt(Endpoint.BULK_OUT.value)
+                    resp = self.transport.write_interrupt(
+                        Endpoint.BULK_OUT.value,
+                        remainder,
+                        length=len(remainder),
+                        timeout=bulk_timeout,
+                        read_response=True,
+                    )
             
             if resp and success_header in resp[:len(success_header)]:
                 return True
