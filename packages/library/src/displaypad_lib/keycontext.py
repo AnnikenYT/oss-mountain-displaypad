@@ -2,6 +2,9 @@ import PIL.ImageDraw as ImageDraw
 from PIL import Image, ImageFont
 
 class KeyContext:
+    """A drawing context for a single key on the DisplayPad.
+    Automatically offsets drawing commands to the key's position.
+    Provides helper methods for common drawing tasks."""
     width = 800 // 6
     height = 240 // 2
     

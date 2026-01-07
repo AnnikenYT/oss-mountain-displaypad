@@ -30,7 +30,9 @@ class Key(ABC):
         pass
 
     def on_tick(self):
-        """Called every loop. Useful for animations (gifs/clocks)"""
+        """Called every loop. Useful for animations (gifs/clocks).
+        The frequency is by no means stable, If a poll ends early, the next tick will be sooner.
+        For more stable timing, consider using FramerateLimitedKey."""
         pass
 
     @abstractmethod
@@ -42,7 +44,7 @@ class Key(ABC):
         pass
     
 class FramerateLimitedKey(Key):
-    """A Key that requests redraws at a limited framerate"""
+    """A Key that requests redraws at a limited framerate."""
     def __init__(self, fps=10):
         super().__init__()
         self.fps = fps
@@ -73,7 +75,7 @@ class LoggerKey(Key):
         ctx.center_text(f"LOG KEY {self.idx}", color="white")
         
 class IconKey(Key):
-    """A Key that displays a static icon image with optional margin and resizing"""
+    """A Key that displays a static icon image with optional margin and resizing."""
     
     def __init__(self, pil_image, margin=10):
         super().__init__()

@@ -7,6 +7,17 @@ from logging import getLogger
 log = getLogger(__name__)
 
 class DisplayPad:
+    """Main DisplayPad class to manage keys and display updates.
+    
+    Usage:
+    ``` pad = DisplayPad()
+    pad[0] = MyCustomKey()
+    while True:
+        pad.update()
+
+    pad.disable()
+    ```
+    """
     def __init__(self):
         self.driver = Driver()
         self.keys = [None] * 12  # The 2x6 grid
@@ -23,6 +34,7 @@ class DisplayPad:
             key_instance.request_redraw()
             
     def disable(self):
+        """Sends the disable command to the hardware. Should be called on exit."""
         self.driver.enable(False)
 
     def _get_key_coords(self, index):
@@ -40,12 +52,13 @@ class DisplayPad:
         self.image_buffer.save(filename)
 
     def update(self, timeout=500):
-        """The Main Loop"""
+        """Poll driver for input, update keys, and refresh display as needed.
+            timeout: Poll timeout in milliseconds. Note that this also affects the tick times. See Key.on_tick() for more details.
+        """
         # 1. Poll Driver
         input_state = self.driver.poll_key(timeout)
         # input_state e.g., {'pressed': [0], 'released': [1], 'held': [0]}
 
-        global_dirty = False
 
         # 2. Dispatch Input Events
         for idx in input_state['pressed']:
@@ -53,6 +66,8 @@ class DisplayPad:
         
         for idx in input_state['released']:
             if self.keys[idx]: self.keys[idx].on_release()
+            
+        global_dirty = False
 
         # 3. Render Pass
         for i, key in enumerate(self.keys):
@@ -76,11 +91,15 @@ class DisplayPad:
 
         # 4. Push to Device
         if global_dirty:
-            r, g, b, = self.image_buffer.split()
-            bgr_image = Image.merge("RGB", (b, g, r))
-            
-            img_data = bgr_image.tobytes()
-            try:
-                self.driver.set_panel_image(img_data)
-            except Exception as e:
-                log.error(f"Failed to update display: {e}")
+            self.push_image()
+                
+    def push_image(self):
+        """Push the current image buffer to the device immediately."""
+        r, g, b, = self.image_buffer.split()
+        bgr_image = Image.merge("RGB", (b, g, r))
+        
+        img_data = bgr_image.tobytes()
+        try:
+            self.driver.set_panel_image(img_data)
+        except Exception as e:
+            log.error(f"Failed to push image to display: {e}")
