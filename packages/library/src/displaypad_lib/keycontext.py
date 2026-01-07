@@ -1,5 +1,7 @@
+import PIL.ImageDraw as ImageDraw
+
 class KeyContext:
-    def __init__(self, pil_draw, x_offset, y_offset):
+    def __init__(self, pil_draw: ImageDraw.Draw, x_offset, y_offset):
         self.draw = pil_draw
         self.ox = x_offset
         self.oy = y_offset
