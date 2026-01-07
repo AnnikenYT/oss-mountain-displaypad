@@ -77,6 +77,6 @@ class DisplayPad:
             
             img_data = bgr_image.tobytes()
             try:
-                self.driver.set_panel_image_fast(img_data)
+                self.driver.set_panel_image(img_data)
             except Exception as e:
                 log.error(f"Failed to update display: {e}")

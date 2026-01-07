@@ -4,7 +4,7 @@ import time
 
 logging.basicConfig(level=logging.INFO)
 
-
+# The User defines a reusable component
 class LoggerKey(Key):
     def __init__(self, idx):
         super().__init__()
@@ -48,7 +48,6 @@ class HoldButton(Key):
             ctx.rectangle(0, 0, 133, 120, color="purple")
             ctx.text(10, 50, f"HOLD KEY {self.idx}", color="white")
 
-# The User defines a reusable component
 class MuteButton(LoggerKey):
     def __init__(self, idx):
         super().__init__(idx)
@@ -72,7 +71,9 @@ class MuteButton(LoggerKey):
 pad = DisplayPad()
 
 
+pad[0] = LoggerKey(0)
 pad[1] = HoldButton(1)
+pad[2] = MuteButton(2)
 
 while True:
     try:
