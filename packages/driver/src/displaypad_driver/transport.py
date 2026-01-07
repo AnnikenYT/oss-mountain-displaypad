@@ -52,7 +52,7 @@ class USBTransport:
         except usb.core.USBError as e:
             raise TransportError(e)
 
-    def write_interrupt(self, endpoint: int = 0x4, data: bytes = b'', length: int = 64, timeout: int = 2000) -> bytes:
+    def write_interrupt(self, endpoint: int = 0x4, data: bytes = b'', length: int = 64, timeout: int = 2000, read_response: bool = True) -> bytes:
         """Write data broken into 'length' chunks, then read response."""
         remainder = bytes(data)
         # log.debug(f"Writing to endpoint {endpoint}: {data}")
@@ -67,7 +67,8 @@ class USBTransport:
                     # if write length differs, raise TransportError
                     raise TransportError(f"Wrote {urbtx} bytes, expected {length}")
                 remainder = remainder[length:]
-
+            if not read_response:
+                return b''
             # read a standard small response
             resp = self.read_interrupt(endpoint=0x83, length=64)
             return resp
