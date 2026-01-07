@@ -1,6 +1,6 @@
 from displaypad_lib import DisplayPad, Key
 import logging
-import random
+import time
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,6 +19,34 @@ class LoggerKey(Key):
     def render(self, ctx):
         ctx.rectangle(0, 0, 133, 120, color="blue")
         ctx.text(10, 50, f"LOG KEY {self.idx}", color="white")
+
+class HoldButton(Key):
+    def __init__(self, idx):
+        super().__init__()
+        self.idx = idx
+        self.start = None
+        self.held = False
+
+    def on_press(self):
+        self.start = time.time()
+        self.held = True
+        self.request_redraw()
+        return super().on_press()
+
+    def on_release(self):
+        held_time = time.time() - self.start
+        logging.info(f"Key {self.idx} was held for {held_time:.2f} seconds before release")
+        self.held = False
+        self.request_redraw()
+        return super().on_release()
+
+    def render(self, ctx):
+        if self.held:
+            ctx.rectangle(0, 0, 133, 120, color="orange")
+            ctx.text(10, 50, f"HOLDING KEY {self.idx}", color="white")
+        else:
+            ctx.rectangle(0, 0, 133, 120, color="purple")
+            ctx.text(10, 50, f"HOLD KEY {self.idx}", color="white")
 
 # The User defines a reusable component
 class MuteButton(LoggerKey):
@@ -44,8 +72,7 @@ class MuteButton(LoggerKey):
 pad = DisplayPad()
 
 
-for i in range(12):
-    pad[i] = MuteButton(i)
+pad[1] = HoldButton(1)
 
 while True:
     try:
