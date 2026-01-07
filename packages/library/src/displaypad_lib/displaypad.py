@@ -2,6 +2,9 @@ from PIL import Image, ImageDraw
 from .key import Key
 from .keycontext import KeyContext
 from displaypad_driver import DisplayPad as Driver
+from logging import getLogger
+
+log = getLogger(__name__)
 
 class DisplayPad:
     def __init__(self):
@@ -69,9 +72,11 @@ class DisplayPad:
 
         # 4. Push to Device
         if global_dirty:
-            # set_panel_image: imgdata should be a sequence of (R,G,B) tuples in PIL order.
-            pixels = []
-            for y in range(self.height):
-                for x in range(self.width):
-                    pixels.append(self.image_buffer.getpixel((x, y)))
-            self.driver.set_panel_image(imgdata=pixels)
+            r, g, b, = self.image_buffer.split()
+            bgr_image = Image.merge("RGB", (b, g, r))
+            
+            img_data = bgr_image.tobytes()
+            try:
+                self.driver.set_panel_image_fast(img_data)
+            except Exception as e:
+                log.error(f"Failed to update display: {e}")
