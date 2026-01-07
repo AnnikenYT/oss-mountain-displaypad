@@ -5,7 +5,7 @@ import logging
 import time
 
 from .transport import USBTransport
-from .protocol import URB_HEADERS, KEYMAP, parse_response, get_pressed_keys
+from .protocol import URB_HEADERS, parse_response, get_pressed_keys, Endpoint
 from .image import load_image_bytes
 from .exceptions import DisplayPadError
 from time import sleep
@@ -88,7 +88,7 @@ class DisplayPad:
 
         try:
             start_time = time.time()
-            r = self.transport.write_interrupt(0x4, msg)
+            r = self.transport.write_interrupt(Endpoint.CONTROL_OUT.value, msg)
             elapsed_time = time.time() - start_time
             log.debug("Write operation completed in %.2f seconds", elapsed_time)
         except Exception as e:
@@ -119,7 +119,7 @@ class DisplayPad:
         header = URB_HEADERS.get('SetMainBrightness')
         msg = bytearray(header) + struct.pack('<B', value)
         try:
-            r = self.transport.write_interrupt(0x4, msg)
+            r = self.transport.write_interrupt(Endpoint.CONTROL_OUT.value, msg)
             return r
         except Exception as e:
             raise DisplayPadError(e)
@@ -152,7 +152,7 @@ class DisplayPad:
 
         msg = struct.pack('<hxxxxhh', area, right, bottom)
         msg = bytearray(header) + bytearray(msg)
-        r = self.transport.write_interrupt(0x4, msg)
+        r = self.transport.write_interrupt(Endpoint.CONTROL_OUT.value, msg)
 
         if isinstance(r, (bytes, bytearray)) and bytes(header) in r:
             # build pixel stream (device expects BGR order)
@@ -167,7 +167,7 @@ class DisplayPad:
             # send in 1024-byte chunks
             chunk_size = 1024
             try:
-                resp = self.transport.write_interrupt(0x2, data, length=chunk_size)
+                resp = self.transport.write_interrupt(Endpoint.BULK_OUT.value, data, length=chunk_size)
             except Exception as e:
                 raise DisplayPadError(e)
 
