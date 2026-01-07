@@ -34,11 +34,15 @@ class DisplayPad:
         w = self.width // 6
         h = self.height // 2
         return (col * w, row * h)
+    
+    def screenshot(self, filename):
+        """Save current buffer to a file for debugging"""
+        self.image_buffer.save(filename)
 
-    def update(self):
+    def update(self, timeout=500):
         """The Main Loop"""
         # 1. Poll Driver
-        input_state = self.driver.poll_key()
+        input_state = self.driver.poll_key(timeout)
         # input_state e.g., {'pressed': [0], 'released': [1], 'held': [0]}
 
         global_dirty = False
@@ -64,7 +68,7 @@ class DisplayPad:
                     draw = ImageDraw.Draw(self.image_buffer)
                     
                     # We pass a custom context that handles the offset automatically
-                    ctx = KeyContext(draw, x_offset=x, y_offset=y)
+                    ctx = KeyContext(draw, x_offset=x, y_offset=y, image=self.image_buffer)
                     key.render(ctx)
                     
                     key._needs_redraw = False
