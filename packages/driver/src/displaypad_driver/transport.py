@@ -5,6 +5,9 @@ import usb.util
 import array
 from .exceptions import TransportError, DeviceNotFoundError
 from logging import getLogger
+import libusb
+
+libusb.config(LIBUSB=None)
 
 log = getLogger(__name__)
 
