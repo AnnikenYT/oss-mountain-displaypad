@@ -1,201 +1,222 @@
 """Higher-level DisplayPad device API built on top of the USB transport."""
-import struct
-import logging
-import time
 
-from .transport import USBTransport
-from .protocol import URB_HEADERS, get_pressed_keys, Endpoint
-from .exceptions import DisplayPadError
+import logging
+import threading
+import time
+from typing import List, Dict, Optional, Tuple, Set
+
+
+from .exceptions import DisplayPadError, TransportError, DeviceNotFoundError
+from .protocol import (
+    VID, PID, NUM_KEYS, ICON_SIZE, CHUNK_SIZE, HEADER_SIZE, PACKET_SIZE,
+    EP_DISPLAY, INIT_MSG, IMG_MSG_TEMPLATE, KEY_MAP, get_pressed_keys
+)
+from .transport import open_interfaces, close_interfaces, check_dependencies
 
 log = logging.getLogger(__name__)
 
 
 class DisplayPad:
-    """Object representing the DisplayPad device with friendly methods.
+    """Object representing the DisplayPad device.
 
     Example:
-        d = DisplayPad(0x3282, 0x0009)
-        d.set_brightness(50)
+        with DisplayPad() as d:
+            d.set_brightness(50)
+            d.upload_button(0, bgr_data)
     """
 
-    def __init__(self, vendor_id: int = 0x3282, product_id: int = 0x0009):
-        self.transport = USBTransport(vendor_id, product_id)
-        self.enabled = False
-        self.pressed_keys = set()  # Track currently pressed keys
-        
-        self.reset()
-        self.enable(True)
-        
-    def reset(self):
-        self.transport.device.reset()
-    
+    def __init__(self, vendor_id: int = VID, product_id: int = PID):
+        self.vendor_id = vendor_id
+        self.product_id = product_id
+        self.usb_dev = None
+        self.hid_dev = None
+        self.pressed_keys: Set[int] = set()
+        self.connected = False
+        self._usb_lock = threading.Lock()
+        self._pending_key_packets: List[bytes] = []
+
+        self.connect()
+
+    def connect(self):
+        """Open USB interfaces and execute initialization handshake."""
+        with self._usb_lock:
+            if self.connected:
+                return
+
+            self.usb_dev, self.hid_dev = open_interfaces()
+            self._init_device()
+            self.connected = True
+
+    def close(self):
+        """Close USB interfaces and release resources."""
+        with self._usb_lock:
+            if self.connected:
+                close_interfaces(self.usb_dev, self.hid_dev)
+                self.usb_dev = None
+                self.hid_dev = None
+                self.connected = False
+
     def __enter__(self):
         return self
-        
+
     def __exit__(self, exc_type, exc_value, traceback):
-        self.reset()
-        self.enable(False)
+        self.close()
 
-    def poll_key(self, timeout=500) -> dict:
-        """Poll for key events and return pressed and released keys.
-        
-        Returns:
-            A dictionary with 'pressed' and 'released' keys:
-            {
-                'pressed': [list of newly pressed key indices],
-                'released': [list of newly released key indices],
-                'current': [list of all currently pressed key indices]
-            }
-        """
-        
-        if hasattr(self, '_pending_inputs') and self._pending_inputs:
-            msg = self._pending_inputs.pop(0)
-        else:
+    def _init_device(self):
+        """Send INIT_MSG on Interface 3 and wait for a matching echo with 250ms firmware settling sleep."""
+        if not self.hid_dev:
+            raise DisplayPadError("HID device interface not open")
+
+        pkt = INIT_MSG
+        echo = pkt[1:6]
+        ack_received = False
+
+        for _attempt in range(60):
             try:
-                msg = self.transport.read_interrupt(timeout=timeout)
+                self.hid_dev.write(pkt)
+            except Exception:
+                time.sleep(0.01)
+                continue
+
+            try:
+                resp = self.hid_dev.read(64, timeout=500)
+            except Exception:
+                resp = None
+
+            if not resp:
+                time.sleep(0.01)
+                continue
+
+            if len(resp) >= 5 and bytes(resp[:5]) == echo:
+                # Firmware settling delay before display engine is ready
+                time.sleep(0.25)
+                ack_received = True
+                break
+
+        if not ack_received:
+            raise DisplayPadError("DisplayPad did not respond to INIT handshake")
+
+    def set_brightness(self, percent: int = 100):
+        """Set DisplayPad backlight brightness. percent: 0 to 100."""
+        with self._usb_lock:
+            if not self.hid_dev:
+                raise DisplayPadError("Device not connected")
+
+            percent = max(0, min(100, int(percent)))
+            buf = bytearray(64)
+            buf[0] = 0x12
+            buf[1] = 0x03
+            buf[4] = percent
+            try:
+                self.hid_dev.write(bytes(buf))
             except Exception as e:
-                log.debug('poll_key read failed: %s', e)
-                return {'pressed': [], 'released': [], 'current': list(self.pressed_keys)}
+                raise DisplayPadError(f"Failed to set brightness: {e}")
 
-        if not isinstance(msg, (bytes, bytearray)):
-            return {'pressed': [], 'released': [], 'current': list(self.pressed_keys)}
+    def upload_button(self, key_index: int, bgr_pixels: bytes, key_events: Optional[list] = None):
+        """Upload a 102x102 BGR image payload to a specific button (key_index 0..11).
 
-        if not msg or msg[0] != 0x01:
-            return {'pressed': [], 'released': [], 'current': list(self.pressed_keys)}
+        If key_events list is provided or key events arrive during ACK wait,
+        key event reports are buffered so no keypresses are lost.
+        """
+        if not (0 <= key_index < NUM_KEYS):
+            raise ValueError(f"key_index must be between 0 and {NUM_KEYS - 1}")
 
-        # Get current pressed keys from message
-        current_pressed = set(get_pressed_keys(msg))
-        
-        # Calculate newly pressed and released keys
+        with self._usb_lock:
+            if not self.usb_dev or not self.hid_dev:
+                raise DisplayPadError("Device not connected")
+
+            # Step 1: Send image message template targeting key_index
+            msg = bytearray(IMG_MSG_TEMPLATE)
+            msg[5] = key_index
+            self.hid_dev.write(bytes(msg))
+
+            # Step 2: Wait for readiness ACK (0x21 0x00 0x00), buffering incoming key events
+            for _ in range(100):
+                resp = self.hid_dev.read(64, timeout=5)
+                if resp and len(resp) >= 3 and resp[0] == 0x21 and resp[1] == 0x00 and resp[2] == 0x00:
+                    break
+                if resp and len(resp) >= 48 and resp[0] == 0x01:
+                    raw_evt = bytes(resp)
+                    if not self._pending_key_packets or self._pending_key_packets[-1] != raw_evt:
+                        self._pending_key_packets.append(raw_evt)
+                    if key_events is not None:
+                        key_events.append(list(resp))
+            else:
+                raise DisplayPadError(f"No ready response for key {key_index}")
+
+            # Step 3: Write payload (HEADER_SIZE + PACKET_SIZE) in 1024-byte chunks
+            payload = bytearray(HEADER_SIZE + PACKET_SIZE)
+            payload[HEADER_SIZE:HEADER_SIZE + len(bgr_pixels)] = bgr_pixels
+
+            for i in range(0, len(payload), CHUNK_SIZE):
+                self.usb_dev.write(EP_DISPLAY, bytes(payload[i:i + CHUNK_SIZE]), timeout=1000)
+
+            # Step 4: Wait for confirmation ACK (0x21 0x00 0xFF), buffering incoming key events
+            for _ in range(100):
+                resp = self.hid_dev.read(64, timeout=5)
+                if resp and len(resp) >= 3 and resp[0] == 0x21 and resp[1] == 0x00 and resp[2] == 0xFF:
+                    return
+                if resp and len(resp) >= 48 and resp[0] == 0x01:
+                    raw_evt = bytes(resp)
+                    if not self._pending_key_packets or self._pending_key_packets[-1] != raw_evt:
+                        self._pending_key_packets.append(raw_evt)
+                    if key_events is not None:
+                        key_events.append(list(resp))
+
+            raise DisplayPadError(f"Transfer confirmation timed out for key {key_index}")
+
+
+
+    def upload_panel(self, tiles_bgr: List[bytes], key_events: Optional[list] = None):
+        """Upload BGR payloads for all 12 buttons."""
+        if len(tiles_bgr) != NUM_KEYS:
+            raise ValueError(f"Expected {NUM_KEYS} BGR tile payloads, got {len(tiles_bgr)}")
+
+        for idx, bgr in enumerate(tiles_bgr):
+            self.upload_button(idx, bgr, key_events=key_events)
+
+    def read_raw_report(self, timeout: int = 150) -> Optional[bytes]:
+        """Read a raw HID report from Interface 3."""
+        with self._usb_lock:
+            if not self.hid_dev:
+                return None
+            try:
+                data = self.hid_dev.read(64, timeout=timeout)
+                return bytes(data) if data else None
+            except Exception as e:
+                log.debug("read_raw_report failed: %s", e)
+                return None
+
+    def poll_key(self, timeout: int = 150) -> Dict[str, List[int]]:
+        """Poll for key events and return newly pressed, newly released, and current key lists.
+
+        Drains buffered key events captured during image updates first.
+        """
+        raw = None
+        with self._usb_lock:
+            if self._pending_key_packets:
+                raw = self._pending_key_packets.pop(0)
+            elif self.hid_dev:
+                try:
+                    data = self.hid_dev.read(64, timeout=timeout)
+                    raw = bytes(data) if data else None
+                except Exception as e:
+                    log.debug("poll_key read failed: %s", e)
+
+        if not raw or len(raw) < 48 or raw[0] != 0x01:
+            return {
+                'pressed': [],
+                'released': [],
+                'current': sorted(list(self.pressed_keys))
+            }
+
+        current_pressed = set(get_pressed_keys(raw))
         newly_pressed = list(current_pressed - self.pressed_keys)
         newly_released = list(self.pressed_keys - current_pressed)
-        
-        # Update state
         self.pressed_keys = current_pressed
-        
+
         return {
             'pressed': sorted(newly_pressed),
             'released': sorted(newly_released),
-            'current': sorted(current_pressed)
+            'current': sorted(list(current_pressed))
         }
-
-    def enable(self, enabled: bool = True) -> bool:
-        header = URB_HEADERS.get('APEnable')
-        enabled_byte = 0x1 if enabled else 0x0
-        msg = bytearray(header) + bytearray([enabled_byte])
-
-        log.debug("Enabling device: %s", "ON" if enabled else "OFF")
-        log.debug("Message to send: %s", msg)
-
-        try:
-            start_time = time.time()
-            r = self.transport.write_interrupt(0x4, msg)
-            elapsed_time = time.time() - start_time
-            log.debug("Write operation completed in %.2f seconds", elapsed_time)
-        except Exception as e:
-            log.error("Error during write_interrupt: %s", e)
-            if hasattr(e, 'errno'):
-                log.error("Error number: %s", e.errno)
-            if hasattr(e, 'strerror'):
-                log.error("Error description: %s", e.strerror)
-            raise DisplayPadError(e)
-
-        # parse response
-        if isinstance(r, (bytes, bytearray)):
-            log.debug("Response received: %s", r)
-            if r.startswith(bytes(header)):
-                if len(r) > len(header) + 1 and r[len(header) + 1] == 0x01:
-                    self.enabled = enabled
-                    log.debug("Device successfully enabled.")
-                    return True
-            self.enabled = enabled
-            log.debug("Fallback: Device treated as %s.", "enabled" if enabled else "disabled")
-            return True
-
-        log.warning("Unexpected response or no response received.")
-        return False
-
-    def set_brightness(self, value: int = 100):
-        value = max(0, min(100, int(value)))
-        header = URB_HEADERS.get('SetMainBrightness')
-        msg = bytearray(header) + struct.pack('<B', value)
-        try:
-            r = self.transport.write_interrupt(0x4, msg)
-            return r
-        except Exception as e:
-            raise DisplayPadError(e)
-
-    def set_panel_image(self, 
-                        raw_data: bytes, 
-                        left=0,
-                        top=0, 
-                        bottom=240, 
-                        right=800,
-                        poll_every: int = 8) -> bool:
-        """
-        1. Expects raw bytes (already formatted as BGR).
-        2. Polls for inputs WHILE sending data to prevent missed releases.
-        """
-        header = URB_HEADERS.get('SetPanelImage')
-        success_header = bytearray([0x21, 0, 0xff])
-
-        right -= 1
-        bottom -= 1
-
-        height = (bottom - top) + 1
-        width = (right - left) + 1
-        area = (height * width * 3) >> 9
-
-        msg = struct.pack('<hxxxxhh', area, right, bottom)
-        msg = bytearray(header) + bytearray(msg)
-        r = self.transport.write_interrupt(0x4, msg)
-
-        if isinstance(r, (bytes, bytearray)) and bytes(header) in r:
-            # --- THE CHUNK LOOP ---
-            chunk_size = 1024
-            total_len = len(raw_data)
-            
-            # We will check for inputs every ~8KB (approx every 10-25ms)
-            # This keeps the UI responsive without slowing down the transfer too much
-            check_interval = poll_every * 1024 
-            next_check = check_interval
-
-            for i in range(0, total_len - chunk_size, chunk_size):
-                # 1. Send the Chunk
-                chunk = raw_data[i : i + chunk_size]
-                self.transport.write_interrupt(Endpoint.BULK_OUT.value, chunk, length=chunk_size, read_response=False)
-                
-                # If we are effectively "blocking" the main thread, we must check inputs here.
-                if i > next_check:
-                    self._quick_poll()
-                    next_check += check_interval
-
-            # Send any remaining bytes
-            remainder = raw_data[(total_len // chunk_size) * chunk_size :]
-            if remainder:
-                resp = self.transport.write_interrupt(Endpoint.BULK_OUT.value, remainder, length=len(remainder), read_response=True)
-            
-            if resp and success_header in resp[:len(success_header)]:
-                return True
-            else:
-                return False
-        raise DisplayPadError('Device not ready for image data')
-
-    def _quick_poll(self):
-        """
-        Non-blocking read of the interrupt endpoint.
-        If we find an event, we stash it in an internal buffer.
-        """
-        try:
-            # We don't want to block here, so set a very short timeout. 1 is too little, 2 seems ok.
-            data = self.transport.read_interrupt(Endpoint.INTERRUPT_IN.value, length=64, timeout=2)
-            
-            if data:
-                # We will process it the next time the user calls poll()
-                if not hasattr(self, '_pending_inputs'):
-                    self._pending_inputs = []
-                self._pending_inputs.append(data)
-                
-        except Exception:
-            # Timeouts are expected here, just ignore them
-            pass
