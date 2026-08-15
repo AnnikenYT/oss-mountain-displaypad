@@ -2,6 +2,27 @@ import PIL.ImageDraw as ImageDraw
 from PIL import Image, ImageFont
 
 
+def get_default_font(size: int = 18) -> ImageFont.ImageFont:
+    """Load a crisp, bold system font (size 18pt by default) for high-density key displays."""
+    font_paths = (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+    )
+    for p in font_paths:
+        try:
+            return ImageFont.truetype(p, size)
+        except Exception:
+            pass
+    try:
+        return ImageFont.load_default(size=size)
+    except Exception:
+        return ImageFont.load_default()
+
+
 class KeyContext:
     """A drawing context for a single key on the DisplayPad.
     Automatically offsets drawing commands to the key's position.
@@ -13,18 +34,21 @@ class KeyContext:
         self.draw = pil_draw
         self.ox = x_offset
         self.oy = y_offset
-        self.font = font or ImageFont.load_default()
+        self.font = font or get_default_font(18)
         self.image = image
 
     def set_font(self, font):
         self.font = font
 
+
     def text(self, x, y, text, fill="white", font=None, **kwargs):
+        fill = kwargs.pop('color', fill)
         font = font or self.font
         self.draw.text((self.ox + x, self.oy + y), text,
                        fill=fill, font=font, **kwargs)
 
     def rectangle(self, x, y, w, h, fill="red", **kwargs):
+        fill = kwargs.pop('color', fill)
         self.draw.rectangle(
             [self.ox + x, self.oy + y, self.ox + x + w, self.oy + y + h],
             fill=fill,
@@ -32,6 +56,7 @@ class KeyContext:
         )
 
     def ellipse(self, x, y, w, h, fill="red", **kwargs):
+        fill = kwargs.pop('color', fill)
         self.draw.ellipse(
             [self.ox + x, self.oy + y, self.ox + x + w, self.oy + y + h],
             fill=fill,
@@ -39,6 +64,7 @@ class KeyContext:
         )
 
     def line(self, x1, y1, x2, y2, fill="red", width=1, **kwargs):
+        fill = kwargs.pop('color', fill)
         self.draw.line(
             [self.ox + x1, self.oy + y1, self.ox + x2, self.oy + y2],
             fill=fill,
@@ -47,13 +73,16 @@ class KeyContext:
         )
 
     def polygon(self, points, fill="red", **kwargs):
+        fill = kwargs.pop('color', fill)
         offset_points = [(self.ox + x, self.oy + y) for (x, y) in points]
         self.draw.polygon(offset_points, fill=fill, **kwargs)
 
     def pixel(self, x, y, fill="red", **kwargs):
+        fill = kwargs.pop('color', fill)
         self.draw.point((self.ox + x, self.oy + y), fill=fill, **kwargs)
         
     def point(self, x, y, fill="red", **kwargs):
+        fill = kwargs.pop('color', fill)
         self.draw.point((self.ox + x, self.oy + y), fill=fill, **kwargs)
 
     def paste_image(self, pil_image: Image.Image, x=0, y=0):
@@ -89,6 +118,7 @@ class KeyContext:
         self.image.paste(rgb, (clip_left, clip_top), mask=alpha)
 
     def arc(self, x1, y1, x2, y2, start, end, fill="red", width=1, **kwargs):
+        fill = kwargs.pop('color', fill)
         self.draw.arc(
             [self.ox + x1, self.oy + y1, self.ox + x2, self.oy + y2],
             start,
@@ -98,16 +128,21 @@ class KeyContext:
         )
 
     # Layout helpers
-    def center_text(self, text, y=None, fill="white", font=None):
+    def center_text(self, text, y=None, fill="white", font=None, **kwargs):
+        fill = kwargs.pop('color', fill)
         font = font or self.font
-        # bbox: (left, top, right, bottom)
-        _, _, w, h = self.draw.textbbox((0, 0), text, font=font)
-        x = (self.width - w) // 2
-        y = (self.height - h) // 2 if y is None else y
-        self.text(x, y, text, fill=fill, font=font)
+        bbox = self.draw.textbbox((0, 0), text, font=font)
+        w = bbox[2] - bbox[0]
+        h = bbox[3] - bbox[1]
+        x = (self.width - w) // 2 - bbox[0]
+        calc_y = ((self.height - h) // 2 - bbox[1]) if y is None else (y - bbox[1])
+        self.text(x, calc_y, text, fill=fill, font=font, **kwargs)
+
 
     def fill(self, fill="black", **kwargs):
+        fill = kwargs.pop('color', fill)
         self.rectangle(0, 0, self.width, self.height, fill=fill, **kwargs)
+
         
     
 
