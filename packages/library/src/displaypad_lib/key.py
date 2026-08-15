@@ -83,7 +83,7 @@ class IconKey(Key):
         self.margin = margin
 
     def render(self, ctx):
-        ctx.fill("black")
+        ctx.clear()
         # Calculate available space considering the margin
         available_width = ctx.width - 2 * self.margin
         available_height = ctx.height - 2 * self.margin

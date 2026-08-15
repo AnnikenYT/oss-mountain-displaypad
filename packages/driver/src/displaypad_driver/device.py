@@ -125,7 +125,13 @@ class DisplayPad:
         except Exception as e:
             raise DisplayPadError(e)
 
-    def set_panel_image(self, raw_data, left=0, top=0, bottom=240, right=800) -> bool:
+    def set_panel_image(self, 
+                        raw_data: bytes, 
+                        left=0,
+                        top=0, 
+                        bottom=240, 
+                        right=800,
+                        poll_every: int = 8) -> bool:
         """
         1. Expects raw bytes (already formatted as BGR).
         2. Polls for inputs WHILE sending data to prevent missed releases.
@@ -149,9 +155,9 @@ class DisplayPad:
             chunk_size = 1024
             total_len = len(raw_data)
             
-            # We will check for inputs every ~16KB (approx every 10-25ms)
+            # We will check for inputs every ~8KB (approx every 10-25ms)
             # This keeps the UI responsive without slowing down the transfer too much
-            check_interval = 16 * 1024 
+            check_interval = poll_every * 1024 
             next_check = check_interval
 
             for i in range(0, total_len - chunk_size, chunk_size):
