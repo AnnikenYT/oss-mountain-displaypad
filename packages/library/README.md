@@ -16,7 +16,7 @@ Multi-page layout engine design, auto-timeout page transitions, and responsive a
   - `FramerateLimitedKey` — Rate-limited key rendering.
   - `LoggerKey` — Diagnostics key logging presses and releases.
 - **Drawing Context (`KeyContext`)**:
-  - Key-relative drawing primitives: `center_text`, `text`, `rectangle`, `ellipse`, `line`, `polygon`, `arc`, `fill`, `clear`, `paste_image`. Supports both `color` and `fill` parameter aliases.
+  - Isolated per-key PIL `Image` surface with native PIL `ImageDraw` (`ctx.draw`) access, automatic tile clipping, and key-relative drawing primitives: `center_text`, `text`, `rectangle`, `rounded_rectangle`, `ellipse`, `line`, `polygon`, `arc`, `fill`, `clear`, `paste_image`, `apply_alpha_mask`. Supports both `color` and `fill` parameter aliases.
 - **Async Queue & Hybrid Batch Rendering**:
   - Background thread drains key updates with frame deduplication. Single-key updates use fast per-button tile uploads; layout changes automatically batch update the full panel.
 

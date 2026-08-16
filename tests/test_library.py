@@ -114,6 +114,37 @@ class TestLibrary(unittest.TestCase):
         self.assertTrue(key.pressed)
         self.assertTrue(key.released)
 
+    def test_keycontext_native_imagedraw_and_forwarding(self):
+        img = Image.new("RGB", (102, 102), (0, 0, 0))
+        ctx = KeyContext(width=102, height=102, image=img)
+        
+        # Test native draw access
+        ctx.draw.rounded_rectangle([0, 0, 101, 101], radius=20, fill=(255, 0, 0))
+        self.assertEqual(img.getpixel((50, 50)), (255, 0, 0))
+
+        # Test helper method
+        ctx.line(0, 0, 50, 50, fill=(0, 255, 0), width=2)
+        self.assertEqual(img.getpixel((10, 10)), (0, 255, 0))
+
+    def test_isolated_key_rendering_and_clipping(self):
+        from displaypad_lib import DisplayPad
+        pad = DisplayPad.__new__(DisplayPad)
+        pad.width = 612
+        pad.height = 204
+        pad.image_buffer = Image.new("RGB", (pad.width, pad.height), (0, 0, 0))
+        
+        class OversizedKey(Key):
+            def render(self, ctx: KeyContext):
+                # Try to draw way outside local bounds (200x200)
+                ctx.rectangle(0, 0, 200, 200, fill="blue")
+
+        key0 = OversizedKey()
+        pad._render_key_to_buffer(0, key0)
+
+        # Key 0 tile (0..101, 0..101) should be blue (0, 0, 255)
+        self.assertEqual(pad.image_buffer.getpixel((50, 50)), (0, 0, 255))
+        # Key 1 tile (102..203, 0..101) MUST NOT be affected (remains 0, 0, 0 black)
+        self.assertEqual(pad.image_buffer.getpixel((102, 50)), (0, 0, 0))
 
 
 if __name__ == '__main__':
