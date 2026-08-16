@@ -108,17 +108,6 @@ class CPUUsageKey(FramerateLimitedKey):
 # The User sets up the board
 pad = DisplayPad()
 
-image = PIL.open("examples/assets/initial_screen.png")
-# Scale image to fit 800x240 if needed
-image = image.resize((800, 240))
-pad.image_buffer.paste(image, (0, 0))
-
-pad.push_image()
-
-time.sleep(2)
-
-pad.image_buffer = PIL.new("RGB", (800, 240))
-
 pad[0] = LoggerKey(0)
 pad[1] = HoldButton(1)
 pad[2] = MuteButton(2)
