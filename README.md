@@ -37,7 +37,7 @@ Disclaimer: This Project is not affiliated with or endorsed by the Mountain Bran
 ## Dependencies & OS Support
 
 ![linux - full](https://img.shields.io/badge/linux-full-2ea44f?logo=linux&logoColor=ffffff)
-![windows - partial](https://img.shields.io/badge/windows-partial-EBAF00?logo=gitforwindows&logoColor=ffffff)[^1](#faq)
+![windows - full-ish](https://img.shields.io/badge/windows-fullish-EBAF00?logo=gitforwindows&logoColor=ffffff)[^1](#faq)
 ![macos - untested](https://img.shields.io/badge/macos-untested-EBAF00?logo=apple&logoColor=ffffff)
 
 [![Go to Python website](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2FAnnikenYT%2Foss-mountain-displaypad%2Frefs%2Fheads%2Fmain%2Fpackages%2Flibrary%2Fpyproject.toml&query=project.requires-python&label=lib&logo=python&logoColor=white)](https://python.org)
@@ -115,7 +115,12 @@ See the [examples](./examples) directory for complete working examples:
 ## FAQ
 
 ### Why is Windows support marked as partial?
-Primary development takes place on Linux. While `pyusb` and `hidapi` support Windows, USB claim permissions differ. ~~For Windows experimental work, see the `feat/windows-support` branch.~~ <small>(That branch is currently outdated. I'll do some more windows dev eventually when I need it, but I haven't gotten around to it. Feel free to contribute!)</small>
+Primary development takes place on Linux. While `pyusb` and `hidapi` support Windows, they do require some setup:
+
+- Install hdiapi backend (Download hidapi-win.zip from [hidapi releases](https://github.com/libusb/hidapi/releases) and extract `hidapi.dll` to your Python `Scripts` folder or somewhere in your PATH.)
+- Install libusb backend (Download libusb from [libusb releases](https://libusb.info/), find the `libusb-1.0.dll` file, and place it in your Python `Scripts` folder or somewhere in your PATH.)
+
+After these steps, the driver should work on Windows, but it has not been tested extensively. If you encounter issues, please open an issue with your findings!
 
 ### What about MacOS support?
 `pyusb` and `hidapi` support macOS, but hardware verification on macOS has not been tested yet. If you own a Mac and have a DisplayPad, feel free to test and open an issue with the results!
