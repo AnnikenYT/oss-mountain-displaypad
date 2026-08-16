@@ -12,11 +12,28 @@ dependencies = [
     "pillow (>=12.1.0,<13.0.0)",
     "displaypad-driver>=1.0.0"
 ]
+dynamic = [ "classifiers" ]
+keywords = ["displaypad", "mountain", "driver", "library", "python", "usb", "hid"]
 
 
-
-
+[project.urls]
+homepage = "https://annikentogo.de"
+repository = "https://github.com/AnnikenYT/oss-mountain-displaypad"
+documentation = "https://github.com/annikenyt/oss-mountain-displaypad/wiki"
+"Bug Tracker" = "https://github.com/AnnikenYT/oss-mountain-displaypad/issues"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Human Interface Device (HID)"
+
+]

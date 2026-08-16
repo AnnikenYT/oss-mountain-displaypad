@@ -20,5 +20,5 @@ Performance optimizations, dual-interface transport handling, initialization han
   - `split_gif_to_tiles(gif)` & `load_gif_frames(gif)` — Animated GIF parser.
   - `make_label_icon()` & `make_folder_icon()` — Dynamic text label and icon generator.
 
-For a usage example, see [driver_example.py](../../examples/driver_example.py).
+For a usage example, see [driver_example.py](https://github.com/AnnikenYT/oss-mountain-displaypad/blob/main/examples/driver_example.py).
 
