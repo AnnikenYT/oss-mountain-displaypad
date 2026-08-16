@@ -1,13 +1,20 @@
-# Open Source Support for the Mountain DisplayPad
+<center>
+  <img src="./docs/img/brand/oss-mountain-displaypad-horizontal.svg" alt="Project Logo" width="600">
+
+  <h1>Open Source Support for the Mountain DisplayPad</h1>
+</center>
+
 [![Build Packages](https://github.com/AnnikenYT/oss-mountain-displaypad/workflows/Build%20Packages/badge.svg)](https://github.com/AnnikenYT/oss-mountain-displaypad/actions?query=workflow:"Build+Packages")
 [![GitHub tag](https://img.shields.io/github/tag/AnnikenYT/oss-mountain-displaypad?include_prereleases=&sort=semver&color=blue)](https://github.com/AnnikenYT/oss-mountain-displaypad/releases/)
 [![License](https://img.shields.io/badge/License-MIT-blue)](#license)
 [![issues - oss-mountain-displaypad](https://img.shields.io/github/issues/AnnikenYT/oss-mountain-displaypad)](https://github.com/AnnikenYT/oss-mountain-displaypad/issues)
 
+<center>
 <figure>
-  <img src="./docs/img/render.png" alt="Descriptive alt text">
-  <figcaption><center>Example: My personal dashboard created with this library.</figcaption>
+  <img src="./docs/img/render.png" width="600" alt="Descriptive alt text">
+  <figcaption>Example: My personal dashboard created with this library.</figcaption>
 </figure>
+</center>
 
 This repository provides a Python driver and library for the Mountain DisplayPad, enabling users to control, automate, and customize their DisplayPad devices on Linux (and possibly other platforms).
 
@@ -15,6 +22,8 @@ This repository provides a Python driver and library for the Mountain DisplayPad
 > This is **not** meant to replace the Mountain BaseCamp software, but instead to make it possible to integrate the DisplayPad into your own projects. If you're looking for a replacement for BaseCamp, please check out [ramisotti13-eng/BaseCamp-Linux](https://github.com/ramisotti13-eng/BaseCamp-Linux)!
 
 **:window: Windows or :apple: Mac user?** Please see the [FAQ](#faq) for more information on the current state of support for these operating systems.
+
+Disclaimer: This Project is not affiliated with or endorsed by the Mountain Brand or 360 Service Agency GmbH. The Mountain Logo is a registered trademark of 360 Service Agency GmbH.
 
 ## Contents
 - [Dependencies & OS Support](#dependencies--os-support)
