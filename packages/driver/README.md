@@ -1,17 +1,24 @@
 # displaypad-driver package
 
-This package contains a refactored, object-oriented driver for the DisplayPad device.
+`displaypad-driver` provides a thread-safe, high-performance driver for the Mountain DisplayPad device.
 
-Most of the functionality is taken from the original procedural code in the [ReversingForFun DisplayPad project](https://github.com/ReversingForFun/MountainDisplayPadPy/tree/main).
+## Acknowledgments
+Performance optimizations, dual-interface transport handling, initialization handshakes, and input report interleaving were built with inspiration from [ramisotti13-eng/BaseCamp-Linux](https://github.com/ramisotti13-eng/BaseCamp-Linux).
 
-Modules:
+## Modules
 
-- `transport.py` - `USBTransport` class encapsulates low-level USB read/write operations.
-- `device.py` - `DisplayPad` class providing friendly methods: `poll_key`, `set_brightness`, `set_panel_image`, `enable`.
-- `protocol.py` - protocol constants and helpers used by the driver.
- - `image.py` - `load_image_bytes(path, size=None)` helper to load/resize images and return a list
-     of `(R,G,B)` tuples suitable for `DisplayPad.set_panel_image`.
+- `transport.py` — Low-level interface opener (`open_interfaces`, `init_handshake_ctrl`, `close_interfaces`). Claims Interface 1 (PyUSB display bulk transfer endpoint `0x02`) and Interface 3 (`hidapi` command/event endpoint), handles temporary IF0 kernel driver detachment to send HID `SET_IDLE` and `SET_REPORT` commands.
+- `device.py` — Thread-safe `DisplayPad` manager.
+  - `upload_button(key_index, bgr_pixels)` — Uploads a 102×102 BGR tile to a specific key slot (0–11) with non-blocking HID report interleaving.
+  - `upload_panel(tiles_bgr)` — Uploads 12 tile payloads in batch.
+  - `poll_key(timeout)` — Non-blocking polling returning `pressed`, `released`, and `current` key lists.
+  - `set_brightness(percent)` — Adjusts backlight brightness (0–100%).
+- `protocol.py` — VID/PID constants, payload headers, INIT/IMG templates, and `get_pressed_keys` bitmask parser.
+- `image.py` — Image processing utilities:
+  - `image_to_bgr102(img, rotation)` — Converts PIL Image to 102×102 BGR bytes with 0°/90°/180°/270° rotation.
+  - `split_image_to_tiles(img, rotation)` — Slices full-panel 612×204 images into 12 BGR tile payloads.
+  - `split_gif_to_tiles(gif)` & `load_gif_frames(gif)` — Animated GIF parser.
+  - `make_label_icon()` & `make_folder_icon()` — Dynamic text label and icon generator.
 
 For a usage example, see [driver_example.py](../../examples/driver_example.py).
 
-Note: operations that write to or read from USB will raise exceptions defined in `displaypad.exceptions` on error.

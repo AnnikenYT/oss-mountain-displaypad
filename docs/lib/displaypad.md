@@ -1,13 +1,12 @@
 # DisplayPad (library)
 
-Developer notes for `displaypad_lib.displaypad.DisplayPad`, the high-level manager for keys, rendering, and device updates.
+Developer notes for `displaypad_lib.displaypad.DisplayPad`, the high-level manager for keys, multi-page layouts, rendering, and device updates.
 
 ## Getting Started
 - Install the library (and driver) from the repo root: `pip install -e packages/library -e packages/driver`.
-- Verify hardware access if needed (e.g., udev rules); see project README for platform notes.
 - Create a minimal app:
   ```python
-  from displaypad_lib import DisplayPad, Key
+  from displaypad_lib import DisplayPad, Key, Page
 
   class Hello(Key):
       def render(self, ctx):
@@ -19,58 +18,36 @@ Developer notes for `displaypad_lib.displaypad.DisplayPad`, the high-level manag
 
   try:
       while True:
-          pad.update(100)
+          pad.update(20)
   except KeyboardInterrupt:
       pass
   finally:
       pad.disable()
   ```
-- Look at `examples/clock.py` and `examples/lib_example.py` for richer patterns (fonts, graphs, icons).
 
-## Responsibilities
-- Owns the hardware driver (`displaypad_driver.DisplayPad`), the backing `800x240` RGB buffer, and the 12-key (2x6) grid state.
-- Maps logical key indices to pixel regions and forwards input events to the mounted `Key` instances.
-- Batches redraws so the device is only updated when at least one key marks itself dirty.
+## Responsibilities & Architecture
+- Owns the hardware driver (`displaypad_driver.DisplayPad`), backing `800x240` RGB buffer, and `PageManager` multi-page registry.
+- Operates an asynchronous background render queue with frame deduplication so screen repaints do not block key event polling.
+- Batches multi-key updates: single-key updates use fast per-button tile uploads; multi-key or page transitions execute a full-panel batch update (`push_image()`).
+- Automatically renders solid black tiles for unassigned key slots (`None`), erasing previous background image remnants.
 
 ## Key APIs
-- `pad = DisplayPad()`: constructs the driver, buffer, and empty key slots.
-- `pad[index] = key`: mounts a `Key` at `index` (0-11), calls `key.on_mount(index)`, and flags it for redraw.
-- `pad.update(timeout=500)`: single iteration of the loop.
+- `pad = DisplayPad(rotation=0)`: Constructs driver, buffer, and `PageManager`.
+- `pad[index] = key`: Mounts a `Key` at `index` (0-11) on the active page.
+- `pad.add_page("Settings", page)`: Registers a new `Page` layout. If adding/updating the active page, repaints automatically. See [page.md](./page.md).
+- `pad.switch_to_page("Settings")`: Switches active page and triggers full-panel repaint.
+- `pad.push_image(image_or_path=None)`: Slices image buffer (or given image/file path) into 12 tile payloads and streams immediately to hardware.
+- `pad.update(timeout=20)`: Single iteration of main loop.
+  - Checks page auto-timeouts (`mode: "after" | "idle"`).
   - Polls hardware input via `driver.poll_key(timeout)`.
-  - Dispatches `on_press` / `on_release`.
-  - Calls `on_tick` on each key, renders dirty keys into the shared buffer via `KeyContext`.
-  - Pushes the composed image to the device (BGR order) if anything changed.
-- `pad.disable()`: sends the disable command; call on exit.
-- `pad.screenshot(path)`: saves the current buffer for debugging.
+  - Dispatches `on_press`, `on_release`, `on_double_press`, `on_long_press` (with synthetic press guards for fast taps).
+  - Ticks active page keys and queues dirty tile uploads.
+- `pad.set_brightness(percent)`: Sets hardware backlight level (0–100%).
+- `pad.clear()`: Resets buffer and unassigned slots to black.
+- `pad.disable()`: Releases interfaces and closes worker threads.
+- `pad.screenshot(path)`: Saves current buffer to disk.
 
-## Coordinate system
-- Grid: 2 rows x 6 columns → 12 keys.
-- Per-key size: `width = 800 // 6`, `height = 240 // 2`.
-- `_get_key_coords(index)` returns the top-left corner for a key region; `KeyContext` handles offsets for drawing.
 
-## Typical loop
-```python
-from displaypad_lib import DisplayPad
-from my_keys import MyKey
+## Acknowledgments
+Performance optimizations and multi-page layout engine design inspired by [ramisotti13-eng/BaseCamp-Linux](https://github.com/ramisotti13-eng/BaseCamp-Linux).
 
-pad = DisplayPad()
-pad[0] = MyKey()
-
-try:
-    while True:
-        pad.update(100)  # milliseconds
-except KeyboardInterrupt:
-    pass
-finally:
-    pad.disable()
-```
-
-## Best practices
-- Always call `request_redraw()` from a key when its state changes; `update` only pushes frames when something is dirty.
-- Keep per-frame work light inside `update` (avoid blocking I/O); long operations should be offloaded or throttled.
-- Use `timeout` to tune responsiveness vs. CPU usage. Lower timeouts tick more frequently; higher saves CPU.
-- For debugging visuals without hardware, render and call `pad.screenshot("/tmp/pad.png")`.
-
-## Example references
-- `examples/clock.py`: shows simple text keys with time/date rendering.
-- `examples/lib_example.py`: demonstrates multiple custom keys, logging, and animated CPU graphing.
