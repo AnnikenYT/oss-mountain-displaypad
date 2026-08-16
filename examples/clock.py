@@ -1,7 +1,13 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../packages/driver/src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../packages/library/src')))
+
 from displaypad_lib import DisplayPad, Key
 from displaypad_lib.key import FramerateLimitedKey
 from PIL import ImageFont
 from datetime import datetime
+
 
 pad = DisplayPad()
 
@@ -31,10 +37,14 @@ pad[8] = DateKey(format="%b")
 pad[9] = DateKey(format="%d")
 pad[10] = DateKey(format="%Y")
 
-while True:
-    try:
-        pad.update()
-    except KeyboardInterrupt:
-        break
+initial_screen_path = os.path.join(os.path.dirname(__file__), 'assets/initial_screen.png')
 
-pad.disable()
+try:
+    while True:
+        pad.update()
+except KeyboardInterrupt:
+    pass
+finally:
+    if os.path.exists(initial_screen_path):
+        pad.push_image(initial_screen_path)
+    pad.disable()

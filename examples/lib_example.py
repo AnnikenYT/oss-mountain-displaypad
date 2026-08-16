@@ -1,8 +1,14 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../packages/driver/src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../packages/library/src')))
+
 from displaypad_lib import DisplayPad, Key
-from displaypad_lib.key import FramerateLimitedKey, LoggerKey, IconKey
+from displaypad_lib.key import FramerateLimitedKey, LoggerKey, IconKey, GifKey
 import logging
 import time
 from PIL import Image as PIL
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -102,13 +108,18 @@ pad[1] = HoldButton(1)
 pad[2] = MuteButton(2)
 pad[3] = CPUUsageKey(3)
 pad[4] = IconKey(PIL.open("examples/assets/heart.png"))
+pad[5] = GifKey("examples/assets/coin.gif")
         
-while True:
-    try:
-        pad.update(20)
-    except KeyboardInterrupt:
-        break
-    except Exception as e:
-        logging.error(f"Error in main loop: {e}")
+initial_screen_path = os.path.join(os.path.dirname(__file__), 'assets/initial_screen.png')
 
-pad.disable()
+try:
+    while True:
+        pad.update(20)
+except KeyboardInterrupt:
+    pass
+except Exception as e:
+    logging.error(f"Error in main loop: {e}")
+finally:
+    if os.path.exists(initial_screen_path):
+        pad.push_image(initial_screen_path)
+    pad.disable()
