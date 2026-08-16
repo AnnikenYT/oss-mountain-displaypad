@@ -11,7 +11,8 @@ from .protocol import (
     HEADER_SIZE, PACKET_SIZE, EP_DISPLAY, EP_CMD, EP_IN
 )
 
-__version__ = "0.2.0"
+__version__ = "1.0.0"
+
 
 __all__ = [
     "__version__",

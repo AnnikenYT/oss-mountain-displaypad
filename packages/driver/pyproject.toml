@@ -1,6 +1,7 @@
 [project]
 name = "displaypad-driver"
-version = "0.2.0"
+version = "1.0.0"
+
 description = "A Driver to communicate with the mountain displaypad."
 authors = [
     {name = "AnnikenToGo",email = "anniken@annikentogo.de"}
