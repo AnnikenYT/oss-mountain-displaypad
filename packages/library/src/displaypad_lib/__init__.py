@@ -2,6 +2,7 @@
 
 from .displaypad import DisplayPad
 from .key import Key, FramerateLimitedKey, LoggerKey, IconKey, GifKey, LabelKey
+from .keycontext import KeyContext
 from .page import Page, PageManager
 
 __version__ = "1.0.1"
@@ -10,7 +11,7 @@ __version__ = "1.0.1"
 __all__ = [
     '__version__',
     'DisplayPad',
-
+    'KeyContext',
     'Key',
     'FramerateLimitedKey',
     'LoggerKey',
