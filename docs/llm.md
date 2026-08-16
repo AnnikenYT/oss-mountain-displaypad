@@ -7,7 +7,7 @@ Purpose: teach a code agent how to use the DisplayPad library safely, efficientl
 - `Page` & `PageManager` (in `displaypad_lib.page`): multi-page layout engine supporting navigation stacks and automatic inactivity/fixed-delay timeouts (`mode: "after" | "idle"`).
 - `Key` (in `displaypad_lib.key`): abstract key class. Override `render(ctx)`; optional hooks: `on_mount`, `on_press`, `on_release`, `on_double_press`, `on_long_press`, `on_tick`.
 - Key implementations: `GifKey`, `IconKey`, `LabelKey`, `FramerateLimitedKey`, `LoggerKey`.
-- `KeyContext` (in `displaypad_lib.keycontext`): scoped key drawing context. Exposes `width`, `height`, `fill`, `center_text`, `rectangle`, `ellipse`, `line`, `polygon`, `arc`, `text`, `paste_image`, `clear`. Supports both `color` and `fill` parameter aliases.
+- `KeyContext` (in `displaypad_lib.keycontext`): isolated per-key drawing context. Exposes `ctx.draw` (native PIL `ImageDraw`), `ctx.image` (native PIL `Image`), `width`, `height`, `fill`, `center_text`, `rectangle`, `rounded_rectangle`, `ellipse`, `line`, `polygon`, `arc`, `text`, `paste_image`, `clear`, `apply_alpha_mask`. Forwarding handles any native `ImageDraw` calls directly. Supports both `color` and `fill` parameter aliases.
 
 ## Main Loop Contract
 ```python
