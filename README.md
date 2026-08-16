@@ -16,12 +16,63 @@ This repository provides a Python driver and library for the Mountain DisplayPad
 
 **:window: Windows or :apple: Mac user?** Please see the [FAQ](#faq) for more information on the current state of support for these operating systems.
 
-## Acknowledgments & Credits
+## Contents
+- [Dependencies & OS Support](#dependencies--os-support)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Features](#features)
+- [Repo Structure](#repo-structure)
+- [FAQ](#faq)
+- [Acknowledgments & Credits](#acknowledgments--credits)
 
-This project builds upon the fantastic work of the open-source community:
-- [ReversingForFun/MountainDisplayPadPy](https://github.com/ReversingForFun/MountainDisplayPadPy/tree/main) for original reverse-engineered DisplayPad Python driver concepts.
-- [JeLuF/mountain-displaypad](https://github.com/JeLuF/mountain-displaypad/tree/main) for initial key event decoding.
-- [ramisotti13-eng/BaseCamp-Linux](https://github.com/ramisotti13-eng/BaseCamp-Linux) for critical device performance optimizations, dual-transport (PyUSB + hidapi) architecture, protocol handshakes, input report interleaving during display uploads, and multi-page layout engine inspiration.
+## Dependencies & OS Support
+
+![linux - full](https://img.shields.io/badge/linux-full-2ea44f?logo=linux&logoColor=ffffff)
+![windows - partial](https://img.shields.io/badge/windows-partial-EBAF00?logo=gitforwindows&logoColor=ffffff)[^1](#faq)
+![macos - untested](https://img.shields.io/badge/macos-untested-EBAF00?logo=apple&logoColor=ffffff)
+
+[![Go to Python website](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2FAnnikenYT%2Foss-mountain-displaypad%2Frefs%2Fheads%2Fmain%2Fpackages%2Flibrary%2Fpyproject.toml&query=project.requires-python&label=lib&logo=python&logoColor=white)](https://python.org)
+[![Go to Python website](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2FAnnikenYT%2Foss-mountain-displaypad%2Frefs%2Fheads%2Fmain%2Fpackages%2Fdriver%2Fpyproject.toml&query=project.requires-python&label=driver&logo=python&logoColor=white)](https://python.org)
+
+## Installation
+
+### From PyPi
+
+Both packages are available on PyPi.
+
+#### Library (you want this one)
+
+[![PyPI Version](https://img.shields.io/pypi/v/displaypad-lib)](https://pypi.org/project/displaypad-lib/)
+
+```bash
+pip install displaypad-lib
+```
+
+#### Driver
+
+[![PyPI Version](https://img.shields.io/pypi/v/displaypad-driver)](https://pypi.org/project/displaypad-driver/)
+
+
+```bash
+pip install displaypad-driver
+```
+
+### Dev / Source
+
+Install editable packages for development:
+```bash
+pip install -e packages/driver -e packages/library
+```
+
+## Usage
+
+For documentation, see the [project wiki](https://github.com/AnnikenYT/oss-mountain-displaypad/wiki).
+
+See the [examples](./examples) directory for complete working examples:
+- [driver_example.py](./examples/driver_example.py) - Direct driver communication & key event polling.
+- [lib_example.py](./examples/lib_example.py) - High-level library usage with custom buttons & icons.
+- [page_example.py](./examples/page_example.py) - Multi-page navigation & auto-timeout screens.
+- [clock.py](./examples/clock.py) - Live digital clock implementation.
 
 ## Features
 
@@ -51,33 +102,6 @@ This project builds upon the fantastic work of the open-source community:
 ├── scripts/      - Permissions & setup helper scripts
 └── ...
 ```
-
-## Dependencies & OS Support
-
-![linux - full](https://img.shields.io/badge/linux-full-2ea44f?logo=linux&logoColor=ffffff)
-![windows - partial](https://img.shields.io/badge/windows-partial-EBAF00?logo=gitforwindows&logoColor=ffffff)[^1](#faq)
-![macos - untested](https://img.shields.io/badge/macos-untested-EBAF00?logo=apple&logoColor=ffffff)
-
-[![Go to Python website](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2FAnnikenYT%2Foss-mountain-displaypad%2Frefs%2Fheads%2Fmain%2Fpackages%2Flibrary%2Fpyproject.toml&query=project.requires-python&label=lib&logo=python&logoColor=white)](https://python.org)
-[![Go to Python website](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2FAnnikenYT%2Foss-mountain-displaypad%2Frefs%2Fheads%2Fmain%2Fpackages%2Fdriver%2Fpyproject.toml&query=project.requires-python&label=driver&logo=python&logoColor=white)](https://python.org)
-
-## Installation
-
-Install editable packages for development:
-```bash
-pip install -e packages/driver -e packages/library
-```
-
-## Usage
-
-See the [examples](./examples) directory for complete working examples:
-- [driver_example.py](./examples/driver_example.py) - Direct driver communication & key event polling.
-- [lib_example.py](./examples/lib_example.py) - High-level library usage with custom buttons & icons.
-- [page_example.py](./examples/page_example.py) - Multi-page navigation & auto-timeout screens.
-- [clock.py](./examples/clock.py) - Live digital clock implementation.
-
-
-For detailed developer notes, check the `docs/lib/` directory and package `README.md` files.
 
 ## FAQ
 
@@ -121,3 +145,10 @@ Quote [ramisotti13-eng/BaseCamp-Linux](https://github.com/ramisotti13-eng/BaseCa
 > 
 > Then reboot. `0x4000` is `HID_QUIRK_NO_INPUT_SYNC`. After this the command
 > interface appears and the DisplayPad works normally.
+
+## Acknowledgments & Credits
+
+This project builds upon the fantastic work of the open-source community:
+- [ReversingForFun/MountainDisplayPadPy](https://github.com/ReversingForFun/MountainDisplayPadPy/tree/main) for original reverse-engineered DisplayPad Python driver concepts.
+- [JeLuF/mountain-displaypad](https://github.com/JeLuF/mountain-displaypad/tree/main) for initial key event decoding.
+- [ramisotti13-eng/BaseCamp-Linux](https://github.com/ramisotti13-eng/BaseCamp-Linux) for critical device performance optimizations, dual-transport (PyUSB + hidapi) architecture, protocol handshakes, input report interleaving during display uploads, and multi-page layout engine inspiration.
