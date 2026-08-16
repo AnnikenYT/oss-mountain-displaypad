@@ -1,6 +1,6 @@
 [project]
 name = "displaypad-driver"
-version = "1.0.0"
+version = "1.0.1"
 
 description = "A Driver to communicate with the mountain displaypad."
 authors = [

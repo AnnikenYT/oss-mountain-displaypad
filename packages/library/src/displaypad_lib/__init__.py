@@ -4,7 +4,7 @@ from .displaypad import DisplayPad
 from .key import Key, FramerateLimitedKey, LoggerKey, IconKey, GifKey, LabelKey
 from .page import Page, PageManager
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 
 __all__ = [
