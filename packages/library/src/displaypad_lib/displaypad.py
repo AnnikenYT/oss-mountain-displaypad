@@ -249,17 +249,18 @@ class DisplayPad:
         """Render a single key into the global image buffer."""
         box = self._get_key_box(idx)
         w, h = box[2] - box[0], box[3] - box[1]
-        draw = ImageDraw.Draw(self.image_buffer)
-        ctx = KeyContext(draw, x_offset=box[0], y_offset=box[1], image=self.image_buffer)
-        ctx.width = w
-        ctx.height = h
+        key_img = Image.new("RGB", (w, h), (0, 0, 0))
+        draw = ImageDraw.Draw(key_img)
+        ctx = KeyContext(draw, width=w, height=h, image=key_img)
         key.render(ctx)
+        self.image_buffer.paste(key_img, (box[0], box[1]))
 
     def _render_blank_key_to_buffer(self, idx: int):
         """Render a solid black tile for an unassigned key slot into global image buffer."""
         box = self._get_key_box(idx)
-        draw = ImageDraw.Draw(self.image_buffer)
-        draw.rectangle(box, fill=(0, 0, 0))
+        w, h = box[2] - box[0], box[3] - box[1]
+        black_tile = Image.new("RGB", (w, h), (0, 0, 0))
+        self.image_buffer.paste(black_tile, (box[0], box[1]))
 
     def _request_tile_upload(self, idx: int):
         """Extract a key's 102x102 tile from image_buffer and queue for USB transmission."""
