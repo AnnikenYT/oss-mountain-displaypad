@@ -5,7 +5,7 @@ from .key import Key, FramerateLimitedKey, LoggerKey, IconKey, GifKey, LabelKey
 from .keycontext import KeyContext
 from .page import Page, PageManager
 
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 
 
 __all__ = [

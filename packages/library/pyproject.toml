@@ -1,6 +1,6 @@
 [project]
 name = "displaypad-lib"
-version = "1.0.1"
+version = "1.1.0"
 description = "A library to easily interact with the Mountain Displaypad"
 authors = [
     {name = "AnnikenToGo",email = "anniken@annikentogo.de"}
@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "pillow (>=12.1.0,<13.0.0)",
-    "displaypad-driver>=1.0.1"
+    "displaypad-driver>=1.1.0"
 ]
 dynamic = [ "classifiers" ]
 keywords = ["displaypad", "mountain", "driver", "library", "python", "usb", "hid"]
