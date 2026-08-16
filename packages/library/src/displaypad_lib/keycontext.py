@@ -27,10 +27,11 @@ class KeyContext:
     """A drawing context for a single key on the DisplayPad.
     Automatically offsets drawing commands to the key's position.
     Provides helper methods for common drawing tasks."""
-    width = 800 // 6
-    height = 240 // 2
+    width = 100
+    height = 100
 
     def __init__(self, pil_draw: ImageDraw.ImageDraw, x_offset, y_offset, font=None, image: Image.Image | None = None):
+
         self.draw = pil_draw
         self.ox = x_offset
         self.oy = y_offset

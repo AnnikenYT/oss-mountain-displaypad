@@ -75,19 +75,35 @@ class CPUUsageKey(FramerateLimitedKey):
 
     def render(self, ctx):
         ctx.fill("black")
-        # Draw the graph
-        graph_width = 133
-        graph_height = 80  # Adjusted height to move the graph higher
+        graph_width = ctx.width - 8
+        graph_height = ctx.height - 35
         max_usage = 100
-        for i in range(len(self.cpu_usage_history) - 1):
-            x1 = i * (graph_width // len(self.cpu_usage_history))
-            y1 = graph_height - (self.cpu_usage_history[i] / max_usage * graph_height)
-            x2 = (i + 1) * (graph_width // len(self.cpu_usage_history))
-            y2 = graph_height - (self.cpu_usage_history[i + 1] / max_usage * graph_height)
-            ctx.line(x1, y1, x2, y2, color="green", width=2)
-        # Draw the current usage text
-        usage_text = f"CPU: {self.cpu_usage:.1f}%"
-        ctx.text(10, graph_height + 15, usage_text, color="white")  # Adjusted text position
+
+        points = self.cpu_usage_history
+        if len(points) > 1:
+            step_x = graph_width / (len(points) - 1)
+            for i in range(len(points) - 1):
+                p1, p2 = points[i], points[i + 1]
+                x_start = 4 + int(i * step_x)
+                x_end = 4 + int((i + 1) * step_x)
+                y1 = graph_height - int(p1 / max_usage * graph_height) + 10
+                y2 = graph_height - int(p2 / max_usage * graph_height) + 10
+
+                for x in range(x_start, x_end):
+                    progress = (x - x_start) / (x_end - x_start) if x_end > x_start else 0.0
+                    y_top = int(y1 + (y2 - y1) * progress)
+                    base_y = graph_height + 10
+                    fill_h = base_y - y_top
+                    if fill_h > 0:
+                        for y_fill in range(y_top, base_y + 1):
+                            t = (y_fill - y_top) / fill_h
+                            g_col = int(255 * (1.0 - t * 0.85))
+                            ctx.pixel(x, y_fill, fill=(0, g_col, 0))
+                    ctx.pixel(x, y_top, fill=(0, 255, 0))
+
+        usage_text = f"CPU {self.cpu_usage:.0f}%"
+        ctx.center_text(usage_text, y=graph_height + 12, color="white")
+
 
 # The User sets up the board
 pad = DisplayPad()

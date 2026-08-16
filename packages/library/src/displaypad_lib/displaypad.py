@@ -39,15 +39,15 @@ class DisplayPad:
 
     def __init__(self, rotation: int = 0, debounce_sec: float = 0.01, dc_window: float = 0.6):
         self.driver = Driver()
-        self.width = 800
-        self.height = 240
+        self.width = 612
+        self.height = 204
         self.rotation = rotation
         self.debounce_sec = debounce_sec
         self.dc_window = dc_window
         self.dc_antibounce = 0.02
 
-
         self.image_buffer = Image.new("RGB", (self.width, self.height))
+
         self.page_manager = PageManager()
         self._synced_keys: List[Optional[object]] = [object()] * NUM_KEYS
         self._key_down_state: List[bool] = [False] * NUM_KEYS
